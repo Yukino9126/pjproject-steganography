@@ -19,6 +19,10 @@
 
 #include <pjsua-lib/pjsua.h>
 #include "pjsua_app_common.h"
+// Add
+#include "..\..\third_party\ilbc\iLBC_encode.c"
+#include "..\..\third_party\ilbc\iLBC_decode.c"
+// end
 
 #define THIS_FILE       "pjsua_app_legacy.c"
 
@@ -252,6 +256,9 @@ static void keystroke_help()
     puts("+-----------------------------------------------------------------------------+");
 #endif
     puts("|  q  QUIT      L  ReLoad       I  IP change     n  detect NAT type           |");
+    // Add: new command '&'
+    puts("|  sleep MS     echo [0|1|txt]  \033[1;96m&  Input secret message\033[0;0m                       |");
+    // end
     puts("|  sleep MS     echo [0|1|txt]                                                |");
     puts("+=============================================================================+");
 
@@ -1840,7 +1847,31 @@ void legacy_main(void)
 
         switch (menuin[0]) {
 
+        // Add
+        case '&':
+            printf("Input secret message: ");
+
+            /* Initialize hidedata, the first 24 bits are preamble bit */
+            memset(hidedata, '\0', 4096);
+            memset(hidedata, 0b10101010, 2);
+            memset(hidedata + 2, 0b10101011, 1);
+
+            fgets(hidedata + 3, 4093, stdin); // secret message and end signal('\n')
+
+            /* Initialize the sender’s data counter */
+            datalen = strlen(hidedata);
+            p = hidedata;
+            count = 0;
+            countchar = 0;
+            start_send = true;
+            
+            break;
+        // end
+            
         case 'm':
+            // Add
+            counter = 0; // Initialize the receiver’s data counter
+            // end
             /* Make call! : */
             ui_make_new_call();
             break;
@@ -1860,6 +1891,9 @@ void legacy_main(void)
             break;
 
         case 'a':
+            // Add
+            counter = 0; // Initialize the receiver’s data counter
+            // end
             ui_answer_call();
             break;
 
