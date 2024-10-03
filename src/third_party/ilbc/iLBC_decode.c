@@ -322,6 +322,10 @@
    /*----------------------------------------------------------------*
     *  main decoder function
     *---------------------------------------------------------------*/
+   // Add
+   int counter = 0;
+   bool start_recv = false;
+   // End
 
    void iLBC_decode(
        float *decblock,            /* (o) decoded signal block */
@@ -350,6 +354,12 @@
        int order_plus_one;
        float syntdenum[NSUB_MAX*(LPC_FILTERORDER+1)];
        float decresidual[BLOCKL_MAX];
+
+       // Add
+       int lsb;
+       static char secret_message, pre;
+       static int preamble_counter = 0;
+       // End
 
        if (mode>0) { /* the data are good */
 
@@ -471,6 +481,48 @@
 
                        iLBCdec_inst->ULP_inst->cb_gain[i][k][ulp],
                            &pos);
+
+                       // Add
+                       if (ulp == 2 && i == 1 && k == 2) {
+                           lsb = lastpart & 1;
+                           secret_message = (secret_message << 1) | lsb;
+                           counter++;
+
+                           /* Print secret message when receiving 8 bits hidden bit */
+                           if (start_recv && counter == 8) {
+                               counter = 0;
+
+                               if (secret_message == '\n') {
+                                   printf("\n>>>");
+                                   start_recv = false;
+                                   preamble_counter = 0;
+                               }
+                               else {
+                                   printf("\033[96m%c\033[0m", secret_message);
+                               }
+                           }
+
+                           /* We use pattern 10101010... which is similar to the preamble
+                            * bits of Ethernet. When there are more than 8 consecutive
+                            * patterns '01' and then encounter pattern '11', we set the
+                            * start_recv flag as true to start receiving secret messages.
+                            */
+                           if (!start_recv && preamble_counter > 16 && pre == 1 && lsb == 1) {
+                               start_recv = true;
+                               counter = 0;
+                           }
+                           else if ((lsb == 1 && pre == 0) || (lsb == 0 && pre == 1)) {
+                               preamble_counter++;
+                           }
+                           else {
+                               preamble_counter = 0;
+                           }
+
+                           /* Save current bit as previous bit */
+                           pre = lsb;
+                       }
+                       // End
+
                        packcombine(gain_index+i*CB_NSTAGES+k, lastpart,
                            iLBCdec_inst->ULP_inst->cb_gain[i][k][ulp]);
                    }
