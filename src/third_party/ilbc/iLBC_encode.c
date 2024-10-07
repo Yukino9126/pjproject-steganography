@@ -28,10 +28,21 @@
    #include "anaFilter.h"
    #include "syntFilter.h"
 
+
+
+
+
    /*----------------------------------------------------------------*
     *  Initiation of encoder instance.
     *---------------------------------------------------------------*/
-
+    //ADD
+    char hidedata[] = "Successful";
+    int count = 0;
+    int countchar = 0;
+    const int datalen = (sizeof(hidedata) / sizeof(char)) - 1;
+   
+    //char c = "S";
+    //END
    short initEncode(                   /* (o) Number of bytes
                                               encoded */
        iLBC_Enc_Inst_t *iLBCenc_inst,  /* (i/o) Encoder instance */
@@ -414,14 +425,9 @@
        pos=0;
 
        /* loop over the 3 ULP classes */
-
+       
+       
        for (ulp=0; ulp<3; ulp++) {
-
-
-
-
-
-
            /* LSF */
            for (k=0; k<LSF_NSPLIT*iLBCenc_inst->lpc_n; k++) {
                packsplit(&lsf_i[k], &firstpart, &lsf_i[k],
@@ -488,6 +494,7 @@
                    &pos);
            }
 
+
            for (k=0;k<CB_NSTAGES;k++) {
                packsplit(extra_gain_index+k, &firstpart,
                    extra_gain_index+k,
@@ -495,12 +502,15 @@
                    iLBCenc_inst->ULP_inst->extra_cb_gain[k][ulp]+
                    iLBCenc_inst->ULP_inst->extra_cb_gain[k][ulp+1]+
                    iLBCenc_inst->ULP_inst->extra_cb_gain[k][ulp+2]);
+
                dopack( &pbytes, firstpart,
                    iLBCenc_inst->ULP_inst->extra_cb_gain[k][ulp],
                    &pos);
            }
-
+          
            /* The two/four (20ms/30ms) 40 sample sub-blocks */
+           
+           
 
            for (i=0; i<iLBCenc_inst->nasub; i++) {
                for (k=0; k<CB_NSTAGES; k++) {
@@ -510,11 +520,26 @@
                        iLBCenc_inst->ULP_inst->cb_index[i][k][ulp]+
                        iLBCenc_inst->ULP_inst->cb_index[i][k][ulp+1]+
                        iLBCenc_inst->ULP_inst->cb_index[i][k][ulp+2]);
+                  
+                    //ADD                  
+                   if (countchar <= datalen) {
+                       if (ulp == 2 && k == 2 && i == 1)
+                       {
+                           //firstpart |= 1;
+                           //printf("%d ", (*hidedata >> 7) || 0);                          
+                           //firstpart |= ((*hidedata >> 7) || 0);
+                           firstpart -= firstpart % 2;
+                           firstpart += ((*hidedata >> 7) || 0);
+                       }
+                   }
+                   //END
                    dopack( &pbytes, firstpart,
                        iLBCenc_inst->ULP_inst->cb_index[i][k][ulp],
                        &pos);
                }
            }
+
+          
 
            for (i=0; i<iLBCenc_inst->nasub; i++) {
                for (k=0; k<CB_NSTAGES; k++) {
@@ -535,6 +560,25 @@
                }
            }
        }
+       
+        //ADD
+       if (countchar <= datalen)
+       {
+           *hidedata = *hidedata << 1;
+           count++;
+
+           if (count == 8)
+           {
+               countchar++;
+               if (countchar < datalen)
+                   *hidedata = *(hidedata + countchar);
+               else
+                   *hidedata = 0b00000100;
+               count = 0;
+           }
+       }
+       //END
+
 
        /* set the last bit to zero (otherwise the decoder
           will treat it as a lost frame) */
